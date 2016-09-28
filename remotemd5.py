@@ -8,7 +8,7 @@ import commands
 
 MD5FILELOG = '/tmp/md5checkfilelst.txt'
 MD5PATHLOG = '/tmp/md5checkpathlst.txt'
-CHECKPATH = '/home/share/CANDANCE/LIBIRARY/work/ZSHX_database'
+CHECKPATH = '/home/fwang/share/test'
 
 '''
 # create remote file to log md5 check info of all files

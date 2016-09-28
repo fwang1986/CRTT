@@ -25,11 +25,13 @@ class fileupdate:
             self.conf = conffile
         else:
             print "configure file %s does not existed, use default value!"%(conffile)
-        self.user = 'fei_wang'
-        self.ip = '10.100.7.10'
-        self.passwd = 'fw'
-        self.localpath = '/mnt/hgfs/share/pytest/ZSHX_database'
-        self.remotepath = '/home/fei_wang/ZSHX_database'
+        self.scaletimes = 'permanent'
+        self.period = 600
+        self.user = 'user'
+        self.ip = '10.10.10.10'
+        self.passwd = 'pass'
+        self.localpath = '/home/local/test'
+        self.remotepath = '/home/remote/test'
         self.logname = 'fileupdate-log.txt'
         self.logpath = '/var/fileupdate/'
         self.updatecnt = 0
@@ -40,6 +42,8 @@ class fileupdate:
     '''
     def confparser(self):
         conf = configobj.ConfigObj('%s'%(self.conf), encoding='UTF8')
+        self.scaletimes = conf['mode']['scaletimes']
+        self.period = conf['mode']['period']
         self.user = conf['remote']['user']
         self.ip = conf['remote']['ip']
         self.passwd = conf['remote']['passwd']
@@ -369,36 +373,48 @@ def Main_thread():
     # the default path
     global MD5FILELOG
     global MD5PATHLOG
-    check_cnt = 1
     updateclass = fileupdate('./config/conf.ini')
     updateclass.confparser()
     updateclass.setup_logging()
     updateclass.confinfotolog()
-    rc = updateclass.sshwithremote()
-    if rc != 0:
-        return rc
-    rc = updateclass.remotemd5filegenerate()
-    if rc != 0:
-        return rc
-    rc = updateclass.pathwalkcheck()
-    count = 0
-    while rc != 0 and count < 5:
-        updateclass.pathwalkupdate()
-        updateclass.remotemd5filegenerate()
+    permanent = False
+    Count = 1
+
+    if updateclass.scaletimes == 'permanent':
+        permanent = True
+    else:
+        permanent = False
+        Count = int(updateclass.scaletimes)
+    while True:
+        check_cnt = 1
+        rc = updateclass.sshwithremote()
+        if rc != 0:
+            return rc
+        rc = updateclass.remotemd5filegenerate()
+        if rc != 0:
+            return rc
         rc = updateclass.pathwalkcheck()
-        count += 1
-        updateclass.logger.info("Update time count: %d!"%(count))
-    endtm = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
-    updateclass.logger.info("-"*100)
-    updateclass.logger.info("end time: %s"%(endtm))
-    updateclass.logger.info('****************  Update local to remote End  *******************')
-    updateclass.logger.info("="*100)
+        count = 0
+        while rc != 0 and count < 5:
+            updateclass.pathwalkupdate()
+            updateclass.remotemd5filegenerate()
+            rc = updateclass.pathwalkcheck()
+            count += 1
+            updateclass.logger.info("Update time count: %d!"%(count))
+        endtm = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
+        updateclass.logger.info("-"*100)
+        updateclass.logger.info("end time: %s"%(endtm))
+        updateclass.logger.info('****************  Update local to remote End  *******************')
+        updateclass.logger.info("="*100)
+        if permanent==False:
+            Count = Count-1
+            if Count==0:
+                return 0
+        time.sleep(int(updateclass.period))
     return 0
 
 def main(argv=None):
-    while True:
-        Main_thread()
-        time.sleep(600)
+    Main_thread()
 
 if __name__ == '__main__':
     main()
